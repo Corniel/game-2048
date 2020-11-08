@@ -23,7 +23,7 @@ namespace Game2048
 					switch (Console.ReadKey().Key)
 					{
 						case ConsoleKey.R: Play(rnd, new RandomSolver(rnd), TimeSpan.Zero, 100000, false, @"C:\code\game-2048\logs\randomsolver.log"); break;
-						case ConsoleKey.C: Play(rnd, new MonteCarloSolver(rnd),TimeSpan.FromMilliseconds(50), 200, false, @"C:\code\game-2048\logs\MonteCarloSolver.log"); break;
+						case ConsoleKey.C: Play(rnd, new MonteCarloSolver(rnd),TimeSpan.FromMilliseconds(100), 200, false, @"C:\code\game-2048\logs\MonteCarloSolver.log"); break;
 						case ConsoleKey.M: PlayManual(rnd); break;
 						case ConsoleKey.Q: return;
 						default:
@@ -35,51 +35,66 @@ namespace Game2048
 		}
 
 		private static void Play(IGenerator rnd, ISolver solver, TimeSpan movetime, int runs, bool showGames, string logfile)
-		{
-			var running = new RunCollection();
+        {
+            var running = new RunCollection();
 
-			Console.Clear();
-			for (int i = 1; i <= runs; i++)
-			{
-				if (!showGames)
-				{
-					Console.Write("\r{0}", i);
-				}
-				var game = Game.Create(rnd);
-				
-				while (game.IsActive)
-				{
-					if (showGames)
-					{
-						Console.Clear();
-						Console.WriteLine(game.Formatted());
-					}
-					var result = solver.Move(game.Current, movetime);
-					
-					if (result.NoResult) { break; }
-					else
-					{
-						game.Move(result.Move, rnd);
-					}
-				}
-				running.Apply(game.Current);
+            Console.Clear();
+            for (int i = 1; i <= runs; i++)
+            {
+                if (!showGames)
+                {
+                    Console.Write("\r{0}", i);
+                }
+                var board = PlayGame(rnd, solver, movetime, showGames);
+                running.Apply(board);
+                Save(logfile, running);
+            }
+            Console.WriteLine();
 
-				if (showGames)
-				{
-					Console.Clear();
-					Console.Write(game.Formatted());
-					Console.WriteLine();
-				}
-			}
-			Console.WriteLine();
+            Console.WriteLine("Done");
+        }
 
-			running.Save(logfile);
-			running.Save(Console.Out);
+        private static Board PlayGame(IGenerator rnd, ISolver solver, TimeSpan movetime, bool showGames)
+        {
+            var game = Game.Create(rnd);
 
-			Console.WriteLine("Done");
-		}
+            while (game.IsActive)
+            {
+                if (showGames)
+                {
+                    Console.Clear();
+                    Console.WriteLine(game.Formatted());
+                }
+                else
+                {
+                    Console.Write($"\rTurns: {game.MoveCount}, Score: {game.Current.Score:#,##0}");
+                }
+                var result = solver.Move(game.Current, movetime);
 
-		private static void PlayManual(IGenerator rnd)
+                if (result.NoResult) { break; }
+                else
+                {
+                    game.Move(result.Move, rnd);
+                }
+            }
+
+            if (showGames)
+            {
+                Console.Clear();
+                Console.Write(game.Formatted());
+                Console.WriteLine();
+            }
+
+            return game.Current;
+        }
+
+        private static void Save(string logfile, RunCollection running)
+        {
+            running.Save(logfile);
+            running.Save(Console.Out);
+        }
+
+        private static void PlayManual(IGenerator rnd)
 		{
 			var game = Game.Create(rnd);
 
